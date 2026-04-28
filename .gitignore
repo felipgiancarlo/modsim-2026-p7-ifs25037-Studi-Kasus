@@ -1,9 +1,3 @@
 .env
-venv/
-db/data.db
-
-# Python cache
 __pycache__/
-**/__pycache__/
-*.py[cod]
-*$py.class
+venv/
