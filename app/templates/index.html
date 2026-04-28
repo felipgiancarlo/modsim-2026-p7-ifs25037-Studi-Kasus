@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Planner AI — Powered by Delcom LLM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f1117;
+            --card-bg: #1a1c23;
+            --input-bg: #242731;
+            --text-color: #ffffff;
+            --accent-color: #2ecc71;
+            --error-color: #ff4757;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .header { text-align: center; margin-bottom: 40px; }
+        .header img { width: 60px; margin-bottom: 15px; }
+        .header h1 { margin: 0; font-size: 2.5rem; color: var(--accent-color); }
+        .header p { opacity: 0.7; }
+
+        .form-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background: var(--input-bg);
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .row { display: flex; gap: 15px; }
+        .row .form-group { flex: 1; }
+
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-generate:hover { transform: scale(1.02); }
+
+        #error-msg {
+            color: var(--error-color);
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        /* Styling Kartu Hasil */
+        #result-card {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            margin-top: 40px;
+        }
+
+        .itinerary-day {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--accent-color);
+        }
+
+        .day-title { font-weight: 700; color: var(--accent-color); margin-bottom: 10px; }
+        .cost { font-size: 0.85rem; color: #aaa; margin-top: 10px; }
+        .tips { font-style: italic; color: #2ecc71; font-size: 0.9rem; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="https://cdn-icons-png.flaticon.com/512/854/854878.png" alt="Logo">
+        <h1>Trip Planner AI</h1>
+        <p>Generator Rencana Perjalanan Wisata — Powered by Delcom LLM</p>
+    </div>
+
+    <div class="form-card">
+        <div class="form-group">
+            <label>📍 Kota / Destinasi Tujuan</label>
+            <input type="text" id="destination" placeholder="Contoh: Bali, Kyoto, Paris...">
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label>📅 Durasi (Hari)</label>
+                <input type="number" id="duration" value="3" min="1">
+            </div>
+            <div class="form-group">
+                <label>👥 Jumlah Orang</label>
+                <input type="number" id="people" value="2" min="1">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>💰 Anggaran Perjalanan</label>
+            <select id="budget">
+                <option value="Murah — Backpacker">Murah — Backpacker</option>
+                <option value="Sedang — Comfort Travel" selected>Sedang — Comfort Travel</option>
+                <option value="Mewah — Luxury">Mewah — Luxury</option>
+            </select>
+        </div>
+
+        <button id="generate-btn" class="btn-generate" onclick="handleGenerate()">
+            🚀 Generate Itinerary
+        </button>
+        <div id="error-msg"></div>
+    </div>
+
+    <div id="result-card">
+        <h2 id="result-title" style="text-align: center;"></h2>
+        <div id="itinerary-list"></div>
+    </div>
+
+    <script>
+        async function handleGenerate() {
+            const btn = document.getElementById('generate-btn');
+            const errorDiv = document.getElementById('error-msg');
+            const resultCard = document.getElementById('result-card');
+            const itineraryList = document.getElementById('itinerary-list');
+
+            // Ambil Value
+            const destination = document.getElementById('destination').value;
+            const duration_days = document.getElementById('duration').value;
+            const num_people = document.getElementById('people').value;
+            const budget = document.getElementById('budget').value;
+
+            if (!destination) {
+                alert("Mohon masukkan destinasi!");
+                return;
+            }
+
+            // Reset UI
+            errorDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Menghitung Rencana...";
+            resultCard.style.display = 'none';
+
+            try {
+                const response = await fetch('/trips/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        destination, 
+                        duration_days, 
+                        num_people, 
+                        budget 
+                    })
+                });
+
+                const result = await response.json();
+                console.log("Data diterima:", result);
+
+                if (response.ok) {
+                    // Ambil data itinerary dari bungkus "data" yang dikirim Python
+                    const data = result.data ? result.data.itinerary : [];
+                    
+                    if (data.length === 0) {
+                        throw new Error("AI memberikan hasil kosong, silakan coba lagi.");
+                    }
+
+                    // Tampilkan Judul
+                    document.getElementById('result-title').innerText = `📋 Itinerary: ${destination}`;
+                    
+                    // Render Cards
+                    itineraryList.innerHTML = ''; // Kosongkan list lama
+                    data.forEach(item => {
+                        const card = `
+                            <div class="itinerary-day">
+                                <div class="day-title">HARI ${item.day}</div>
+                                <div class="activity">${item.activity}</div>
+                                <div class="cost">💰 Estimasi Biaya: ${item.estimated_cost}</div>
+                                <div class="tips">💡 Tips: ${item.tips}</div>
+                            </div>
+                        `;
+                        itineraryList.innerHTML += card;
+                    });
+
+                    resultCard.style.display = 'block';
+                    resultCard.scrollIntoView({ behavior: 'smooth' });
+
+                } else {
+                    throw new Error(result.error || "Gagal menghubungi server AI");
+                }
+
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = "❌ Error: " + err.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = "🚀 Generate Itinerary";
+            }
+        }
+    </script>
+</body>
+</html>

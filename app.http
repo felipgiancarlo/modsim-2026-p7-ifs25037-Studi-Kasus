@@ -1,0 +1,9 @@
+POST http://127.0.0.1:5000/trips/generate
+Content-Type: application/json
+
+{
+  "destination": "Bali",
+  "duration_days": 3,
+  "people": 2,
+  "budget": "sedang"
+}

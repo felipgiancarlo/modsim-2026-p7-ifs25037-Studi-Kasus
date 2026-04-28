@@ -1,0 +1,5 @@
+{
+  "python.analysis.extraPaths": [
+        "./MODSIM-2026-P7-IFS25037-STUDI KASUS"
+    ]
+}
